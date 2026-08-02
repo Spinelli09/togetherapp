@@ -13,7 +13,7 @@ interface InvitePartnerPayload {
   redirectTo: string;
 }
 
-export default {
+const handler = {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     const { supabase, supabaseAdmin, userClaims } = ctx;
 
@@ -91,3 +91,5 @@ export default {
     return Response.json({ ok: true });
   }),
 };
+
+export default handler;
