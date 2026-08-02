@@ -39,6 +39,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      household_invites: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          household_id: string
+          id: string
+          invited_by: string
+          status: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          household_id: string
+          id?: string
+          invited_by: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          household_id?: string
+          id?: string
+          invited_by?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invites_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           display_name: string
@@ -97,6 +138,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_household_invite: {
+        Args: { invite_token: string }
+        Returns: string
+      }
+      expire_stale_household_invites: {
+        Args: { target_household_id: string }
+        Returns: undefined
+      }
+      get_invite_preview: {
+        Args: { invite_token: string }
+        Returns: {
+          expires_at: string
+          household_name: string
+          invited_email: string
+          status: string
+        }[]
+      }
       is_household_member: {
         Args: { target_household_id: string }
         Returns: boolean
