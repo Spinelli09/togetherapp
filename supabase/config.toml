@@ -415,7 +415,7 @@ enabled = true
 
 [functions.akahu-oauth-exchange]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/akahu-oauth-exchange/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -437,7 +437,7 @@ entrypoint = "./functions/akahu-webhook/index.ts"
 
 [functions.sync-accounts]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/sync-accounts/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

@@ -32,12 +32,20 @@ export default async function DashboardPage() {
         Signed in as {user?.email}
       </p>
 
-      <Link
-        href="/settings/household"
-        className="mt-6 text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Manage household
-      </Link>
+      <div className="mt-6 flex gap-4">
+        <Link
+          href="/settings/household"
+          className="text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Manage household
+        </Link>
+        <Link
+          href="/settings/banks"
+          className="text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Connect your bank
+        </Link>
+      </div>
 
       <form action={signOut} className="mt-8">
         <button

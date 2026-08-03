@@ -39,6 +39,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_type: string
+          available_balance: number | null
+          connection_id: string
+          currency: string
+          current_balance: number
+          external_account_id: string
+          id: string
+          last_synced_at: string
+        }
+        Insert: {
+          account_name: string
+          account_type: string
+          available_balance?: number | null
+          connection_id: string
+          currency: string
+          current_balance: number
+          external_account_id: string
+          id?: string
+          last_synced_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_type?: string
+          available_balance?: number | null
+          connection_id?: string
+          currency?: string
+          current_balance?: number
+          external_account_id?: string
+          id?: string
+          last_synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "bank_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_connections: {
+        Row: {
+          connected_by: string
+          created_at: string
+          household_id: string
+          id: string
+          institution: string
+          last_sync_at: string | null
+          provider: string
+          status: string
+          vault_secret_id: string
+        }
+        Insert: {
+          connected_by: string
+          created_at?: string
+          household_id: string
+          id?: string
+          institution: string
+          last_sync_at?: string | null
+          provider?: string
+          status?: string
+          vault_secret_id: string
+        }
+        Update: {
+          connected_by?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          institution?: string
+          last_sync_at?: string | null
+          provider?: string
+          status?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_connections_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_invites: {
         Row: {
           created_at: string
@@ -142,9 +230,26 @@ export type Database = {
         Args: { invite_token: string }
         Returns: string
       }
+      connect_bank_account: {
+        Args: {
+          p_household_id: string
+          p_institution: string
+          p_provider: string
+          p_token: string
+        }
+        Returns: string
+      }
+      disconnect_bank_connection: {
+        Args: { p_connection_id: string }
+        Returns: undefined
+      }
       expire_stale_household_invites: {
         Args: { target_household_id: string }
         Returns: undefined
+      }
+      get_bank_connection_token: {
+        Args: { p_connection_id: string }
+        Returns: string
       }
       get_invite_preview: {
         Args: { invite_token: string }
@@ -162,6 +267,14 @@ export type Database = {
       is_household_owner: {
         Args: { target_household_id: string }
         Returns: boolean
+      }
+      mark_bank_connection_error: {
+        Args: { p_connection_id: string }
+        Returns: undefined
+      }
+      record_bank_sync: {
+        Args: { p_accounts: Json; p_connection_id: string }
+        Returns: undefined
       }
     }
     Enums: {
