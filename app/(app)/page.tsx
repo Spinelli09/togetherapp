@@ -45,6 +45,12 @@ export default async function DashboardPage() {
         >
           Connect your bank
         </Link>
+        <Link
+          href="/transactions"
+          className="text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Transactions
+        </Link>
       </div>
 
       <form action={signOut} className="mt-8">

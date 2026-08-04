@@ -91,9 +91,10 @@ export type Database = {
           id: string
           institution: string
           last_sync_at: string | null
+          last_transaction_synced_at: string | null
           provider: string
           status: string
-          vault_secret_id: string
+          vault_secret_id: string | null
         }
         Insert: {
           connected_by: string
@@ -102,9 +103,10 @@ export type Database = {
           id?: string
           institution: string
           last_sync_at?: string | null
+          last_transaction_synced_at?: string | null
           provider?: string
           status?: string
-          vault_secret_id: string
+          vault_secret_id?: string | null
         }
         Update: {
           connected_by?: string
@@ -113,9 +115,10 @@ export type Database = {
           id?: string
           institution?: string
           last_sync_at?: string | null
+          last_transaction_synced_at?: string | null
           provider?: string
           status?: string
-          vault_secret_id?: string
+          vault_secret_id?: string | null
         }
         Relationships: [
           {
@@ -221,6 +224,78 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          deleted_at: string | null
+          description: string
+          direction: string | null
+          external_transaction_id: string
+          household_id: string
+          id: string
+          merchant_name: string | null
+          occurred_at: string
+          provider_category: string | null
+          provider_updated_at: string | null
+          raw_payload: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string
+          deleted_at?: string | null
+          description: string
+          direction?: string | null
+          external_transaction_id: string
+          household_id: string
+          id?: string
+          merchant_name?: string | null
+          occurred_at: string
+          provider_category?: string | null
+          provider_updated_at?: string | null
+          raw_payload: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          deleted_at?: string | null
+          description?: string
+          direction?: string | null
+          external_transaction_id?: string
+          household_id?: string
+          id?: string
+          merchant_name?: string | null
+          occurred_at?: string
+          provider_category?: string | null
+          provider_updated_at?: string | null
+          raw_payload?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -268,12 +343,37 @@ export type Database = {
         Args: { target_household_id: string }
         Returns: boolean
       }
+      list_household_transactions: {
+        Args: {
+          p_before_id?: string
+          p_before_occurred_at?: string
+          p_household_id: string
+          p_limit?: number
+        }
+        Returns: {
+          account_name: string
+          amount: number
+          description: string
+          direction: string
+          id: string
+          merchant_name: string
+          occurred_at: string
+        }[]
+      }
       mark_bank_connection_error: {
         Args: { p_connection_id: string }
         Returns: undefined
       }
       record_bank_sync: {
         Args: { p_accounts: Json; p_connection_id: string }
+        Returns: undefined
+      }
+      record_transaction_sync: {
+        Args: {
+          p_connection_id: string
+          p_synced_up_to: string
+          p_transactions: Json
+        }
         Returns: undefined
       }
     }

@@ -9,6 +9,7 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 import { getAkahuAuthProvider } from "../_shared/akahu-auth.ts";
 import { akahuGetMe, akahuListAccounts, mapAkahuAccount } from "../_shared/akahu-client.ts";
+import { syncTransactionsForConnection } from "../_shared/transaction-sync.ts";
 
 interface ConnectPayload {
   householdId?: string;
@@ -98,6 +99,25 @@ const handler = {
         ok: true,
         connectionId,
         message: "Connected, but the first sync failed — try Sync now.",
+      });
+    }
+
+    // Initial transaction pull, same code path "Sync now" uses (never
+    // duplicated — see design doc §15). A brand-new connection has no
+    // stored boundary, so this fetches Akahu's full available history.
+    const transactionResult = await syncTransactionsForConnection(
+      supabase,
+      appId,
+      token,
+      connectionId,
+      null,
+    );
+
+    if (!transactionResult.ok) {
+      return Response.json({
+        ok: true,
+        connectionId,
+        message: "Connected, but importing transaction history failed — try Sync now.",
       });
     }
 

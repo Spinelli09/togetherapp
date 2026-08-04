@@ -113,9 +113,16 @@ export default async function BanksSettingsPage() {
                 <p className="text-sm text-muted-foreground">No accounts yet — try Sync now.</p>
               )}
 
-              <div className="flex justify-end">
-                <ConnectionActions connectionId={connection.id} />
-              </div>
+              {connection.status === "active" ? (
+                <div className="flex justify-end">
+                  <ConnectionActions connectionId={connection.id} />
+                </div>
+              ) : (
+                <p className="text-right text-sm text-muted-foreground">
+                  Disconnected — accounts and transactions above are kept for your records.
+                  Reconnect below to resume syncing.
+                </p>
+              )}
             </div>
           ))
         )}

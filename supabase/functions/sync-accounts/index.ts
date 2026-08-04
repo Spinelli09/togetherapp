@@ -1,9 +1,10 @@
-// Re-fetches accounts for one existing bank connection ("Sync now").
-// Callable by any member of the connection's household, matching
-// get_bank_connection_token's shared-sync authorization model.
+// Re-fetches accounts and transactions for one existing bank connection
+// ("Sync now"). Callable by any member of the connection's household,
+// matching get_bank_connection_token's shared-sync authorization model.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 import { akahuListAccounts, mapAkahuAccount } from "../_shared/akahu-client.ts";
+import { syncTransactionsForConnection } from "../_shared/transaction-sync.ts";
 
 interface SyncPayload {
   connectionId?: string;
@@ -70,6 +71,32 @@ const handler = {
 
     if (syncError) {
       return Response.json({ ok: false, message: "Couldn't save synced accounts." }, { status: 500 });
+    }
+
+    const { data: connection } = await supabase
+      .from("bank_connections")
+      .select("last_transaction_synced_at")
+      .eq("id", payload.connectionId)
+      .single();
+
+    const transactionResult = await syncTransactionsForConnection(
+      supabase,
+      appId,
+      token,
+      payload.connectionId,
+      connection?.last_transaction_synced_at ?? null,
+    );
+
+    if (!transactionResult.ok) {
+      if (transactionResult.needsReconnect) {
+        await supabase.rpc("mark_bank_connection_error", {
+          p_connection_id: payload.connectionId,
+        });
+      }
+      return Response.json(
+        { ok: false, message: transactionResult.message ?? "Couldn't sync transactions." },
+        { status: transactionResult.needsReconnect ? 401 : 502 },
+      );
     }
 
     return Response.json({ ok: true });

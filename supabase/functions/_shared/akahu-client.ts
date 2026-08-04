@@ -31,14 +31,40 @@ interface AkahuEnvelope<T> {
   message?: string;
   item?: T;
   items?: T[];
+  cursor?: { next?: string };
+}
+
+interface AkahuMerchant {
+  name: string;
+}
+
+interface AkahuCategory {
+  name: string;
+}
+
+export interface AkahuTransaction {
+  _id: string;
+  _account: string;
+  date: string;
+  updated_at?: string;
+  description: string;
+  amount: number;
+  merchant?: AkahuMerchant;
+  category?: AkahuCategory;
 }
 
 async function akahuFetch<T>(
   path: string,
   appId: string,
   token: string,
+  params?: Record<string, string | undefined>,
 ): Promise<{ ok: boolean; status: number; body: AkahuEnvelope<T> }> {
-  const res = await fetch(`${AKAHU_BASE_URL}${path}`, {
+  const url = new URL(`${AKAHU_BASE_URL}${path}`);
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value) url.searchParams.set(key, value);
+  }
+
+  const res = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${token}`,
       "X-Akahu-Id": appId,
@@ -76,5 +102,94 @@ export function mapAkahuAccount(account: AkahuAccount) {
     currency: account.balance?.currency ?? "NZD",
     current_balance: account.balance?.current ?? 0,
     available_balance: account.balance?.available ?? null,
+  };
+}
+
+// GET /transactions is connection-wide (spans every account the token
+// can see), not per-account — see Milestone 6 design doc §1. start is
+// exclusive, end is inclusive, matching Akahu's own documented semantics.
+export async function akahuListTransactions(
+  appId: string,
+  token: string,
+  options: { start?: string; end?: string; cursor?: string },
+): Promise<{
+  ok: boolean;
+  status: number;
+  transactions: AkahuTransaction[];
+  nextCursor: string | null;
+}> {
+  const { ok, status, body } = await akahuFetch<AkahuTransaction>("/transactions", appId, token, {
+    start: options.start,
+    end: options.end,
+    cursor: options.cursor,
+  });
+
+  return {
+    ok,
+    status,
+    transactions: ok ? (body.items ?? []) : [],
+    nextCursor: body.cursor?.next ?? null,
+  };
+}
+
+// Thrown by akahuIterateTransactionPages so a failed page surfaces as a
+// catchable error with the HTTP status attached, rather than a special
+// generator return value a `for await` loop can't see.
+export class AkahuFetchError extends Error {
+  status: number;
+  constructor(status: number) {
+    super(`Akahu request failed with status ${status}`);
+    this.status = status;
+  }
+}
+
+// Walks every page for the given date window, yielding one page at a
+// time rather than accumulating the full result set in memory — this is
+// what bounds Edge Function memory regardless of a household's
+// transaction volume (Milestone 6 design doc §6a, §13). A first-ever
+// sync with no start/end can span many pages of history; each page is
+// upserted by the caller as it's yielded.
+export async function* akahuIterateTransactionPages(
+  appId: string,
+  token: string,
+  options: { start?: string; end?: string },
+): AsyncGenerator<AkahuTransaction[]> {
+  let cursor: string | undefined;
+
+  while (true) {
+    const { ok, status, transactions, nextCursor } = await akahuListTransactions(appId, token, {
+      start: options.start,
+      end: options.end,
+      cursor,
+    });
+
+    if (!ok) {
+      throw new AkahuFetchError(status);
+    }
+
+    yield transactions;
+
+    if (!nextCursor) {
+      return;
+    }
+
+    cursor = nextCursor;
+  }
+}
+
+// Shape record_transaction_sync's SQL side expects (see the Milestone 6
+// migration's jsonb_array_elements() read) — external_account_id is
+// resolved to our local account_id inside that function, not here.
+export function mapAkahuTransaction(transaction: AkahuTransaction) {
+  return {
+    external_account_id: transaction._account,
+    external_transaction_id: transaction._id,
+    occurred_at: transaction.date,
+    amount: transaction.amount,
+    description: transaction.description,
+    merchant_name: transaction.merchant?.name ?? null,
+    provider_category: transaction.category?.name ?? null,
+    raw_payload: transaction,
+    provider_updated_at: transaction.updated_at ?? null,
   };
 }
