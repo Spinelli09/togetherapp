@@ -130,6 +130,127 @@ export type Database = {
           },
         ]
       }
+      budget_categories: {
+        Row: {
+          budget_id: string
+          category_id: string
+        }
+        Insert: {
+          budget_id: string
+          category_id: string
+        }
+        Update: {
+          budget_id?: string
+          category_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_categories_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          is_active: boolean
+          monthly_limit: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          monthly_limit: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          monthly_limit?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_uncategorized_default: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          display_order: number
+          id?: string
+          is_uncategorized_default?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_uncategorized_default?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      category_aliases: {
+        Row: {
+          akahu_category_id: string
+          category_id: string
+          created_at: string
+        }
+        Insert: {
+          akahu_category_id: string
+          category_id: string
+          created_at?: string
+        }
+        Update: {
+          akahu_category_id?: string
+          category_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_aliases_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_invites: {
         Row: {
           created_at: string
@@ -298,7 +419,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      transaction_category_resolution: {
+        Row: {
+          amount: number | null
+          category_id: string | null
+          deleted_at: string | null
+          direction: string | null
+          household_id: string | null
+          occurred_at: string | null
+          provider_category: string | null
+          transaction_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_household_invite: {
@@ -314,6 +455,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_budget: {
+        Args: {
+          p_category_ids: string[]
+          p_household_id: string
+          p_monthly_limit: number
+          p_name: string
+        }
+        Returns: string
+      }
+      deactivate_budget: { Args: { p_budget_id: string }; Returns: undefined }
       disconnect_bank_connection: {
         Args: { p_connection_id: string }
         Returns: undefined
@@ -325,6 +476,16 @@ export type Database = {
       get_bank_connection_token: {
         Args: { p_connection_id: string }
         Returns: string
+      }
+      get_household_budget_progress: {
+        Args: { p_household_id: string; p_month_start: string }
+        Returns: {
+          budget_id: string
+          gross_spent: number
+          monthly_limit: number
+          name: string
+          net_spent: number
+        }[]
       }
       get_invite_preview: {
         Args: { invite_token: string }
@@ -373,6 +534,15 @@ export type Database = {
           p_connection_id: string
           p_synced_up_to: string
           p_transactions: Json
+        }
+        Returns: undefined
+      }
+      update_budget: {
+        Args: {
+          p_budget_id: string
+          p_category_ids: string[]
+          p_monthly_limit: number
+          p_name: string
         }
         Returns: undefined
       }

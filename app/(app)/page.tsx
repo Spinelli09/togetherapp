@@ -51,6 +51,12 @@ export default async function DashboardPage() {
         >
           Transactions
         </Link>
+        <Link
+          href="/budgets"
+          className="text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Budgets
+        </Link>
       </div>
 
       <form action={signOut} className="mt-8">
