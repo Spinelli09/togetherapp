@@ -41,6 +41,16 @@ export async function requestMagicLink(
 
   const supabase = await createClient();
 
+  // TEMPORARY DIAGNOSTIC — remove once redirect_to is confirmed. Uses
+  // console.error so Vercel captures it, and JSON.stringify so an unset
+  // variable (undefined) is distinguishable from an empty string.
+  console.error(
+    "[magic-link diagnostic] NEXT_PUBLIC_APP_URL=",
+    JSON.stringify(process.env.NEXT_PUBLIC_APP_URL),
+    "| callbackUrl=",
+    callbackUrl.toString(),
+  );
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
