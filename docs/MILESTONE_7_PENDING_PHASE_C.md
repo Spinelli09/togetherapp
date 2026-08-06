@@ -1,6 +1,10 @@
-# Milestone 7 — Pending Phase C (category alias seeding)
+# Milestone 7 — Phase C (category alias seeding)
 
-**Status as of this document:** Milestone 7 (budgeting) is fully implemented, migrated, and verified. The one remaining piece — seeding `category_aliases` with real Akahu category mappings — is intentionally not done yet, and this is expected, not an oversight.
+**COMPLETE as of 2026-08-05.** A real bank connection (ANZ) was established, the first real sync imported 7 accounts and 2,266 transactions, and `category_aliases` has been seeded with 63 verified mappings covering every distinct real Akahu category observed. See the implementation report delivered in chat for full detail: the exact query used to inspect the real payload, the complete category breakdown, the per-category mapping (with borderline calls noted), and end-to-end verification against a real (temporary, since-removed) budget showing non-zero categorized spend. This document is kept as the historical record of why Phase C was originally pending and what completing it required — the rest of the file below is unchanged from when it was written for that purpose.
+
+---
+
+**Original status (superseded above):** Milestone 7 (budgeting) is fully implemented, migrated, and verified. The one remaining piece — seeding `category_aliases` with real Akahu category mappings — is intentionally not done yet, and this is expected, not an oversight.
 
 ## Why Phase C is pending
 

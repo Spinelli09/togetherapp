@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
   disconnectBankConnection,
@@ -20,6 +20,10 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
     initialState,
   );
   const messageRef = useRef<HTMLParagraphElement>(null);
+  // Two-step confirm: disconnecting deletes the stored Akahu token from
+  // Vault, so recovering means generating and pasting a new one from
+  // my.akahu.nz. Cheap to guard, annoying to undo.
+  const [isConfirmingDisconnect, setIsConfirmingDisconnect] = useState(false);
 
   const activeState = disconnectState.status === "error" ? disconnectState : syncState;
 
@@ -31,7 +35,8 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="flex gap-2">
+      {/* flex-wrap so the extra confirm/cancel buttons don't overflow on a phone */}
+      <div className="flex flex-wrap justify-end gap-2">
         <form action={syncAction}>
           <input type="hidden" name="connectionId" value={connectionId} />
           <button
@@ -42,16 +47,37 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
             {isSyncing ? "Syncing…" : "Sync now"}
           </button>
         </form>
-        <form action={disconnectAction}>
-          <input type="hidden" name="connectionId" value={connectionId} />
+        {isConfirmingDisconnect ? (
+          <div className="flex items-center gap-2">
+            <form action={disconnectAction}>
+              <input type="hidden" name="connectionId" value={connectionId} />
+              <button
+                type="submit"
+                disabled={isSyncing || isDisconnecting}
+                className="rounded-md border border-destructive px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                {isDisconnecting ? "Disconnecting…" : "Confirm disconnect"}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDisconnect(false)}
+              disabled={isDisconnecting}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
           <button
-            type="submit"
+            type="button"
+            onClick={() => setIsConfirmingDisconnect(true)}
             disabled={isSyncing || isDisconnecting}
             className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
-            {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+            Disconnect
           </button>
-        </form>
+        )}
       </div>
 
       {activeState.status === "error" ? (

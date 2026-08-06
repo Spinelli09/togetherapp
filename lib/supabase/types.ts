@@ -251,6 +251,53 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          current_amount: number
+          household_id: string
+          id: string
+          name: string
+          status: string
+          target_amount: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          current_amount?: number
+          household_id: string
+          id?: string
+          name: string
+          status?: string
+          target_amount: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          current_amount?: number
+          household_id?: string
+          id?: string
+          name?: string
+          status?: string
+          target_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_invites: {
         Row: {
           created_at: string
@@ -446,6 +493,7 @@ export type Database = {
         Args: { invite_token: string }
         Returns: string
       }
+      archive_goal: { Args: { p_goal_id: string }; Returns: undefined }
       connect_bank_account: {
         Args: {
           p_household_id: string
@@ -461,6 +509,14 @@ export type Database = {
           p_household_id: string
           p_monthly_limit: number
           p_name: string
+        }
+        Returns: string
+      }
+      create_goal: {
+        Args: {
+          p_household_id: string
+          p_name: string
+          p_target_amount: number
         }
         Returns: string
       }
@@ -485,6 +541,18 @@ export type Database = {
           monthly_limit: number
           name: string
           net_spent: number
+        }[]
+      }
+      get_household_insight_facts: {
+        Args: { p_household_id: string; p_month_start: string }
+        Returns: Json
+      }
+      get_household_monthly_summary: {
+        Args: { p_household_id: string; p_month_start: string }
+        Returns: {
+          money_in: number
+          money_out: number
+          net: number
         }[]
       }
       get_invite_preview: {
@@ -529,6 +597,10 @@ export type Database = {
         Args: { p_accounts: Json; p_connection_id: string }
         Returns: undefined
       }
+      record_goal_contribution: {
+        Args: { p_amount: number; p_goal_id: string }
+        Returns: undefined
+      }
       record_transaction_sync: {
         Args: {
           p_connection_id: string
@@ -544,6 +616,10 @@ export type Database = {
           p_monthly_limit: number
           p_name: string
         }
+        Returns: undefined
+      }
+      update_goal: {
+        Args: { p_goal_id: string; p_name: string; p_target_amount: number }
         Returns: undefined
       }
     }

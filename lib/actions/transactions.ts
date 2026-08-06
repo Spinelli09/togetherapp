@@ -61,3 +61,26 @@ export async function loadTransactionPage(
 
   return { transactions: data, nextCursor };
 }
+
+// Dashboard's "recent transactions" widget. Calls the same RPC with a
+// caller-supplied limit rather than modifying loadTransactionPage (whose
+// pagination contract Milestone 6 verified carefully) or duplicating the
+// RPC call inline — see Milestone 9 design doc §5.2. Returns rows only;
+// no cursor, since this is a fixed-size peek, not a paginated list.
+export async function loadRecentTransactions(
+  householdId: string,
+  limit: number,
+): Promise<{ transactions: TransactionRow[]; error?: string }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("list_household_transactions", {
+    p_household_id: householdId,
+    p_limit: limit,
+  });
+
+  if (error || !data) {
+    return { transactions: [], error: "Couldn't load recent transactions." };
+  }
+
+  return { transactions: data };
+}

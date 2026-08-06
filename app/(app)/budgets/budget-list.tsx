@@ -57,11 +57,18 @@ function BudgetForm({
   householdId,
   categoryOptions,
   budget,
+  // The current limit lives on BudgetProgressRow, not on the category
+  // assignment, so the editing card passes it in. Without it the edit form
+  // rendered a blank (but required) limit field, forcing the limit to be
+  // retyped on every edit — the goals edit form has always pre-filled its
+  // equivalent field.
+  defaultLimit,
   onDone,
 }: {
   householdId?: string;
   categoryOptions: CategoryOption[];
   budget?: BudgetCategoryAssignment;
+  defaultLimit?: number;
   onDone?: () => void;
 }) {
   const action = budget ? updateBudget : createBudget;
@@ -115,7 +122,7 @@ function BudgetForm({
           step="0.01"
           required
           disabled={isPending}
-          defaultValue={undefined}
+          defaultValue={defaultLimit}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           placeholder="500.00"
         />
@@ -192,6 +199,7 @@ function BudgetCard({
         <BudgetForm
           categoryOptions={categoryOptions}
           budget={assignment}
+          defaultLimit={progress.monthlyLimit}
           onDone={() => setIsEditing(false)}
         />
         <button
