@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 
+import { Label } from "../../ui";
+
 import { ConnectBankForm } from "./connect-bank-form";
 import { ConnectionActions } from "./connection-actions";
 
@@ -55,15 +57,15 @@ export default async function BanksSettingsPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <main className="mx-auto min-h-screen max-w-lg px-6 py-12">
+    <main className="mx-auto max-w-[40rem] px-6 pb-16 pt-24">
       <Link
-        href="/"
+        href="/settings"
         className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        ← Back to dashboard
+        ← Settings
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+      <h1 className="mt-6 text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
         Connected banks
       </h1>
 
@@ -129,9 +131,7 @@ export default async function BanksSettingsPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Connect a bank
-        </h2>
+        <Label>Connect a bank</Label>
         <div className="mt-3">
           <ConnectBankForm householdId={membership.household_id} />
         </div>

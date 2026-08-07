@@ -33,7 +33,13 @@ export type InsightFacts = {
 
 export type Observation = {
   kind: "spending" | "trend" | "budget" | "goal" | "savings" | "data";
+  // The full sentence, with figures. Shown on Spending, where detail is the
+  // point.
   text: string;
+  // The same fact at a glance, for Home — where a sentence carrying three
+  // numbers stops being reassurance and becomes homework. Copy only: no
+  // threshold, tone or selection logic differs between the two.
+  headline: string;
   tone: "neutral" | "warning" | "good";
 };
 
@@ -77,6 +83,7 @@ function deriveObservations(
       observations.push({
         kind: "spending",
         tone: pct > 0 ? "warning" : "good",
+        headline: `Spending is ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% on last month.`,
         text:
           `Categorised spending is ${money(Math.abs(delta))} ${pct > 0 ? "higher" : "lower"} ` +
           `than last month (${money(facts.categorised_spend)} vs ${money(facts.prev_categorised_spend)}, ${pct > 0 ? "+" : ""}${pct}%).`,
@@ -85,6 +92,7 @@ function deriveObservations(
       observations.push({
         kind: "spending",
         tone: "neutral",
+        headline: "Spending is about the same as last month.",
         text: `Categorised spending is steady at ${money(facts.categorised_spend)}, about the same as last month.`,
       });
     }
@@ -92,6 +100,7 @@ function deriveObservations(
     observations.push({
       kind: "spending",
       tone: "neutral",
+      headline: `${money(facts.categorised_spend)} spent this month.`,
       text: `${money(facts.categorised_spend)} of categorised spending this month.`,
     });
   }
@@ -104,6 +113,7 @@ function deriveObservations(
       observations.push({
         kind: "trend",
         tone: pct > 0 ? "warning" : "good",
+        headline: `${category.name} is ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% this month.`,
         text:
           `${category.name} is ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% ` +
           `(${money(category.spent)} vs ${money(category.prev_spent)} last month).`,
@@ -117,12 +127,14 @@ function deriveObservations(
       observations.push({
         kind: "budget",
         tone: "warning",
+        headline: `${budget.name} is over budget by ${money(budget.netSpent - budget.monthlyLimit)}.`,
         text: `${budget.name} is over budget by ${money(budget.netSpent - budget.monthlyLimit)}.`,
       });
     } else if (budget.percentUsed >= 80) {
       observations.push({
         kind: "budget",
         tone: "warning",
+        headline: `${budget.name} is at ${Math.round(budget.percentUsed)}% of its limit.`,
         text: `${budget.name} is at ${Math.round(budget.percentUsed)}% of its ${money(budget.monthlyLimit)} limit.`,
       });
     }
@@ -136,6 +148,7 @@ function deriveObservations(
     observations.push({
       kind: "goal",
       tone: "neutral",
+      headline: `${goal.name} is ${pct}% funded.`,
       text: `${goal.name} is ${pct}% funded (${money(goal.currentAmount)} of ${money(goal.targetAmount)}).`,
     });
   }
@@ -143,6 +156,7 @@ function deriveObservations(
     observations.push({
       kind: "goal",
       tone: "good",
+      headline: `${completedGoals.length} goal${completedGoals.length === 1 ? "" : "s"} reached.`,
       text: `${completedGoals.length} goal${completedGoals.length === 1 ? "" : "s"} reached.`,
     });
   }
@@ -155,6 +169,7 @@ function deriveObservations(
     observations.push({
       kind: "savings",
       tone: "good",
+      headline: `${money(facts.internal_transfers)} moved into your own accounts.`,
       text:
         `${money(facts.internal_transfers)} moved between your own accounts` +
         (top ? ` — the largest was ${money(top.amount)} to ${top.description} across ${top.txn_count} transfer${top.txn_count === 1 ? "" : "s"}.` : "."),
@@ -170,6 +185,7 @@ function deriveObservations(
     observations.push({
       kind: "data",
       tone: "neutral",
+      headline: `${money(facts.uncategorised_spend)} has no category from your bank.`,
       text:
         `${money(facts.uncategorised_spend)} (${pct}% of non-transfer spending) has no category from your bank, ` +
         `so it isn't in the category figures above.`,

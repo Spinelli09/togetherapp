@@ -32,7 +32,25 @@ export async function requestMagicLink(
     return { status: "error", message: "Enter a valid email address." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  // NEXT_PUBLIC_* values are inlined at build time, so a missing value here
+  // means the deployed bundle was built without it. Falling back to
+  // localhost silently produced a magic link whose redirect_to Supabase
+  // rejects (not on the allow list); Supabase then substitutes the Site URL,
+  // and the user lands back on /login with no explanation. Fail visibly
+  // instead of sending a link that cannot work.
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!configuredAppUrl && process.env.NODE_ENV === "production") {
+    console.error(
+      "requestMagicLink: NEXT_PUBLIC_APP_URL is not set in this build — refusing to send a magic link that would redirect to localhost.",
+    );
+    return {
+      status: "error",
+      message: "Sign-in isn't configured correctly. Please try again later.",
+    };
+  }
+
+  const appUrl = configuredAppUrl ?? "http://localhost:3000";
   const next = sanitizeNextPath(formData.get("next"));
   const callbackUrl = new URL("/auth/callback", appUrl);
   if (next) {
@@ -40,16 +58,6 @@ export async function requestMagicLink(
   }
 
   const supabase = await createClient();
-
-  // TEMPORARY DIAGNOSTIC — remove once redirect_to is confirmed. Uses
-  // console.error so Vercel captures it, and JSON.stringify so an unset
-  // variable (undefined) is distinguishable from an empty string.
-  console.error(
-    "[magic-link diagnostic] NEXT_PUBLIC_APP_URL=",
-    JSON.stringify(process.env.NEXT_PUBLIC_APP_URL),
-    "| callbackUrl=",
-    callbackUrl.toString(),
-  );
 
   const { error } = await supabase.auth.signInWithOtp({
     email,

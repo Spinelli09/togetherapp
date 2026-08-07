@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { invitePartner, type InviteState } from "@/lib/actions/invites";
+import { fieldClass, fieldLabelClass, primaryButtonClass } from "../../ui";
 
 const initialState: InviteState = { status: "idle" };
 
@@ -23,7 +24,7 @@ export function InviteForm({ householdId }: { householdId: string }) {
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="householdId" value={householdId} />
       <div className="space-y-2">
-        <label htmlFor="invite-email" className="text-sm font-medium text-foreground">
+        <label htmlFor="invite-email" className={fieldLabelClass}>
           Partner&apos;s email
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -34,13 +35,13 @@ export function InviteForm({ householdId }: { householdId: string }) {
             autoComplete="email"
             required
             disabled={isPending}
-            className="w-full flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className={fieldClass}
             placeholder="partner@example.com"
           />
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 sm:w-auto"
+            className={primaryButtonClass}
           >
             {isPending ? "Sending…" : "Send invite"}
           </button>

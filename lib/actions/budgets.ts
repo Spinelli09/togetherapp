@@ -146,7 +146,7 @@ export async function createBudget(
     return { status: "error", message: "Couldn't create budget." };
   }
 
-  revalidatePath("/budgets");
+  revalidatePath("/spending/budgets");
   return { status: "success", message: "Budget created." };
 }
 
@@ -173,7 +173,7 @@ export async function updateBudget(
     return { status: "error", message: "Couldn't update budget." };
   }
 
-  revalidatePath("/budgets");
+  revalidatePath("/spending/budgets");
   return { status: "success", message: "Budget updated." };
 }
 
@@ -192,6 +192,6 @@ export async function deactivateBudget(
     return { status: "error", message: "Couldn't remove budget." };
   }
 
-  revalidatePath("/budgets");
+  revalidatePath("/spending/budgets");
   return { status: "success" };
 }

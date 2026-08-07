@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { connectBankAccount, type ConnectBankState } from "@/lib/actions/bank";
+import { fieldClass, fieldLabelClass, primaryButtonClass } from "../../ui";
 
 const initialState: ConnectBankState = { status: "idle" };
 
@@ -27,7 +28,7 @@ export function ConnectBankForm({ householdId }: { householdId: string }) {
     <form ref={formRef} action={formAction} className="space-y-3">
       <input type="hidden" name="householdId" value={householdId} />
       <div className="space-y-2">
-        <label htmlFor="pastedToken" className="text-sm font-medium text-foreground">
+        <label htmlFor="pastedToken" className={fieldLabelClass}>
           Akahu personal access token
         </label>
         <p className="text-sm text-muted-foreground">
@@ -49,7 +50,7 @@ export function ConnectBankForm({ householdId }: { householdId: string }) {
           autoComplete="off"
           required
           disabled={isPending}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className={fieldClass}
           placeholder="Paste token"
         />
       </div>
@@ -57,7 +58,7 @@ export function ConnectBankForm({ householdId }: { householdId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className={primaryButtonClass}
       >
         {isPending ? "Connecting…" : "Connect bank"}
       </button>

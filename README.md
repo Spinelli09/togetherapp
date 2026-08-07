@@ -1,4 +1,4 @@
-# Household Ledger
+# Together
 
 A shared finance dashboard for two people who bank separately. See the
 architecture document for the full system design, database schema, and

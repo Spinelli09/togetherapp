@@ -16,6 +16,12 @@ export type BalanceSummary = {
   // labelled "Total balance" would present stale data as current. See
   // design doc §3.1.
   totalBalance: number;
+  // Split out of totalBalance so Home can lead with money that is actually
+  // available to spend today. CHECKING only, deliberately conservative:
+  // anything else (savings, term deposits, KiwiSaver) is money you should
+  // not be told you can spend in a supermarket.
+  spendableBalance: number;
+  savingsBalance: number;
   disconnectedBalance: number;
   hasDisconnectedAccounts: boolean;
   accountCount: number;
@@ -25,11 +31,15 @@ export type BalanceSummary = {
   error?: string;
 };
 
+const SPENDABLE_ACCOUNT_TYPES = new Set(["CHECKING"]);
+
 export async function loadBalanceSummary(
   householdId: string,
 ): Promise<BalanceSummary> {
   const empty: BalanceSummary = {
     totalBalance: 0,
+    spendableBalance: 0,
+    savingsBalance: 0,
     disconnectedBalance: 0,
     hasDisconnectedAccounts: false,
     accountCount: 0,
@@ -42,7 +52,7 @@ export async function loadBalanceSummary(
 
   const { data, error } = await supabase
     .from("bank_connections")
-    .select("status, last_sync_at, bank_accounts(current_balance)")
+    .select("status, last_sync_at, bank_accounts(current_balance, account_type)")
     .eq("household_id", householdId);
 
   if (error || !data) {
@@ -50,6 +60,8 @@ export async function loadBalanceSummary(
   }
 
   let totalBalance = 0;
+  let spendableBalance = 0;
+  let savingsBalance = 0;
   let disconnectedBalance = 0;
   let accountCount = 0;
   let hasDisconnectedAccounts = false;
@@ -80,6 +92,14 @@ export async function loadBalanceSummary(
     totalBalance += connectionTotal;
     accountCount += connection.bank_accounts.length;
 
+    for (const account of connection.bank_accounts) {
+      if (SPENDABLE_ACCOUNT_TYPES.has(account.account_type.toUpperCase())) {
+        spendableBalance += account.current_balance;
+      } else {
+        savingsBalance += account.current_balance;
+      }
+    }
+
     if (
       connection.last_sync_at &&
       (lastSyncedAt === null || connection.last_sync_at > lastSyncedAt)
@@ -90,6 +110,8 @@ export async function loadBalanceSummary(
 
   return {
     totalBalance,
+    spendableBalance,
+    savingsBalance,
     disconnectedBalance,
     hasDisconnectedAccounts,
     accountCount,

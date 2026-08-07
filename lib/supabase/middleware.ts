@@ -42,9 +42,27 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
-    const redirectUrl = new URL("/login", request.url);
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(new URL("/login", request.url));
+
+    // Carry over any cookies written during getUser() — in particular the
+    // session-clearing cookies @supabase/ssr sets when a refresh token is
+    // rejected. Returning a fresh response without them leaves the stale
+    // cookies in the browser, so every later request retries the same
+    // failing refresh instead of starting clean.
+    for (const cookie of response.cookies.getAll()) {
+      redirectResponse.cookies.set(cookie);
+    }
+
+    redirectResponse.headers.set("Cache-Control", "private, no-store");
+    return redirectResponse;
   }
+
+  // A session refresh writes the new JWT to this response via Set-Cookie. If
+  // an edge cache ever stored and replayed that response, another user's
+  // browser would receive it and be signed in as this user. Supabase's SSR
+  // guide calls for this header on any response that can carry a refreshed
+  // session.
+  response.headers.set("Cache-Control", "private, no-store");
 
   return response;
 }

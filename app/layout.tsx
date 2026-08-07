@@ -13,9 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Household Ledger",
-  description:
-    "A shared finance dashboard for two people who bank separately.",
+  title: "Together",
+  description: "Shared finances for two.",
+  // Lets iOS treat a home-screen launch as an app rather than a browser
+  // tab, and gives the shortcut a proper name instead of the URL.
+  appleWebApp: {
+    capable: true,
+    title: "Together",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

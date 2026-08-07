@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { acceptInvite, type AcceptInviteState } from "@/lib/actions/invites";
+import { primaryButtonClass } from "@/app/(app)/ui";
 
 const initialState: AcceptInviteState = { status: "idle" };
 
@@ -31,7 +32,7 @@ export function AcceptForm({
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className={primaryButtonClass + " w-full"}
       >
         {isPending ? "Joining…" : `Join ${householdName}`}
       </button>

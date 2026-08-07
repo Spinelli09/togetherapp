@@ -1,420 +1,286 @@
-// Presentation-only widgets for the dashboard. Every one is a Server
-// Component — no state, no event handlers, no client JS. See Milestone 9
-// design doc §9: the dashboard has no mutations, so it needs no client
-// components at all.
+// Home. Three beats, in the order the question is actually asked:
+//
+//   Confidence  — how are we doing?
+//   Awareness   — what just happened?
+//   Hope        — what are we building together?
+//
+// Anything that answers a different question lives on a different screen.
+// Hierarchy comes from type size and whitespace; there are no cards, no
+// borders and no dividers anywhere on this screen.
+//
+// Every component here is a Server Component. The only client code is the
+// <Reveal>/<ProgressFill> wrapper, which takes children and never sees data.
 import Link from "next/link";
 
-import type { BalanceSummary, MonthlySummary } from "@/lib/actions/dashboard";
-import type { BudgetProgressRow } from "@/lib/actions/budgets";
+import type { BalanceSummary } from "@/lib/actions/dashboard";
 import type { Goal } from "@/lib/actions/goals";
-import type { InsightsResult } from "@/lib/actions/insights";
+import type { Observation } from "@/lib/actions/insights";
 import type { TransactionRow } from "@/lib/actions/transactions";
 
-import { InsightsNarrative } from "./insights-narrative";
+import { ProgressFill } from "./reveal";
+import { Label, cleanDescription, primaryButtonClass } from "./ui";
 
-function formatCurrency(amount: number) {
+function money(amount: number) {
   return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(amount);
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-NZ", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+// The hero drops cents. "$5,438" is a summary; "$5,438.22" is a receipt, and
+// reading it takes longer than the glance this screen exists for.
+function wholeMoney(amount: number) {
+  return new Intl.NumberFormat("en-NZ", {
+    style: "currency",
+    currency: "NZD",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-function SectionHeading({ title, href, linkLabel }: { title: string; href: string; linkLabel: string }) {
-  return (
-    <div className="flex items-baseline justify-between">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
-      <Link
-        href={href}
-        className="text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {linkLabel}
-      </Link>
-    </div>
+function relativeTime(value: string): { text: string; isStale: boolean } {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+  if (minutes < 2) return { text: "just now", isStale: false };
+  if (minutes < 60) return { text: `${minutes} minutes ago`, isStale: false };
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return { text: `${hours} hour${hours === 1 ? "" : "s"} ago`, isStale: false };
+  const days = Math.round(hours / 24);
+  if (days === 1) return { text: "yesterday", isStale: true };
+  return { text: `${days} days ago`, isStale: true };
+}
+
+// Deliberately not personalised. display_name is auto-derived from the
+// email local-part ("spinelli") and there is no UI to change it, so a name
+// here would read as a mistake more often than as warmth. Worth adding the
+// moment display_name becomes editable.
+function greeting(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-NZ", {
+      timeZone: "Pacific/Auckland",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date()),
   );
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 }
 
-function ProgressBar({ percent, isOver }: { percent: number; isOver: boolean }) {
-  // Clamped for display only — the underlying figures are always shown
-  // truthfully alongside, matching budget-list.tsx / goal-list.tsx.
-  const clamped = Math.min(100, Math.max(0, percent));
-  return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-accent">
-      <div
-        className={"h-full rounded-full " + (isOver ? "bg-destructive" : "bg-foreground")}
-        style={{ width: `${clamped}%` }}
-      />
-    </div>
-  );
-}
+/* ── Confidence ─────────────────────────────────────────────────────────
+   One number, large enough that nothing else can compete, and one sentence
+   that turns it into a judgement. A figure alone can't answer "how are we
+   doing" — it needs interpreting, and interpreting is work. */
 
-export function BalanceHero({
-  householdName,
+export function Standing({
   balance,
+  observations,
 }: {
-  householdName: string;
   balance: BalanceSummary;
+  observations: Observation[];
 }) {
+  const synced = balance.lastSyncedAt ? relativeTime(balance.lastSyncedAt) : null;
+
+  // Warnings outrank good news: an honest "we're okay" means knowing where
+  // you stand, not being told everything is fine.
+  const verdict =
+    observations.find((o) => o.tone === "warning") ??
+    observations.find((o) => o.tone === "good") ??
+    observations[0];
+
   return (
     <section>
-      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {householdName}
+      <p className="text-sm text-muted-foreground">{greeting()}</p>
+
+      <p className="mt-10 text-[4rem] font-semibold leading-[0.9] tracking-[-0.035em] tabular-nums text-foreground sm:text-[4.5rem]">
+        {wholeMoney(balance.spendableBalance)}
       </p>
-      <p className="mt-4 text-sm text-muted-foreground">Total balance</p>
-      <p className="mt-1 text-4xl font-semibold tracking-tight tabular-nums text-foreground">
-        {formatCurrency(balance.totalBalance)}
-      </p>
 
-      <p className="mt-2 text-xs text-muted-foreground">
-        {balance.error
-          ? balance.error
-          : balance.lastSyncedAt
-            ? `Across ${balance.accountCount} account${balance.accountCount === 1 ? "" : "s"} · Last synced ${formatDateTime(balance.lastSyncedAt)}`
-            : `Across ${balance.accountCount} account${balance.accountCount === 1 ? "" : "s"} · Never synced`}
-      </p>
-
-      {balance.hasDisconnectedAccounts ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Plus {formatCurrency(balance.disconnectedBalance)} in disconnected accounts — no longer
-          updating.
-        </p>
-      ) : null}
-
-      {balance.hasConnectionError ? (
-        <p className="mt-2 text-xs text-destructive">
-          A bank connection needs attention —{" "}
-          <Link href="/settings/banks" className="underline underline-offset-4">
-            check your banks
-          </Link>
-          .
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-export function MonthlySummaryCard({
-  summary,
-  monthLabel,
-}: {
-  summary: MonthlySummary;
-  monthLabel: string;
-}) {
-  return (
-    <section>
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        This month · {monthLabel}
-      </h2>
-
-      {summary.error ? (
-        <p className="mt-3 text-sm text-muted-foreground">{summary.error}</p>
-      ) : (
-        // Single column on phones — figures like $38,440.99 crowd badly in
-        // three ~100px columns at 375px wide.
-        <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-border p-3">
-            <dt className="text-xs text-muted-foreground">Money in</dt>
-            <dd className="mt-1 text-base font-medium tabular-nums text-foreground">
-              {formatCurrency(summary.moneyIn)}
-            </dd>
-          </div>
-          <div className="rounded-md border border-border p-3">
-            <dt className="text-xs text-muted-foreground">Money out</dt>
-            <dd className="mt-1 text-base font-medium tabular-nums text-foreground">
-              {formatCurrency(summary.moneyOut)}
-            </dd>
-          </div>
-          <div className="rounded-md border border-border p-3">
-            <dt className="text-xs text-muted-foreground">Net</dt>
-            <dd
-              className={
-                "mt-1 text-base font-medium tabular-nums " +
-                (summary.net < 0 ? "text-destructive" : "text-foreground")
-              }
-            >
-              {formatCurrency(summary.net)}
-            </dd>
-          </div>
-        </dl>
-      )}
-    </section>
-  );
-}
-
-export function InsightsWidget({
-  insights,
-  householdId,
-  monthStart,
-}: {
-  insights: InsightsResult;
-  householdId: string;
-  monthStart: string;
-}) {
-  const { facts, observations, error } = insights;
-
-  const toneClass = (tone: string) =>
-    tone === "warning" ? "text-destructive" : "text-foreground";
-
-  return (
-    <section>
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        Insights
-      </h2>
-
-      {error || !facts ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          {error ?? "No insights available yet."}
-        </p>
-      ) : observations.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Not enough activity this month to say anything useful yet.
-        </p>
-      ) : (
-        <>
-          {/* The three-way split. Reporting a single "spent" figure would be
-              misleading — a large share of this household's outflow is money
-              moving between their own accounts. */}
-          <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-md border border-border p-3">
-              <dt className="text-xs text-muted-foreground">Categorised spend</dt>
-              <dd className="mt-1 text-base font-medium tabular-nums text-foreground">
-                {formatCurrency(facts.categorised_spend)}
-              </dd>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <dt className="text-xs text-muted-foreground">Own transfers</dt>
-              <dd className="mt-1 text-base font-medium tabular-nums text-foreground">
-                {formatCurrency(facts.internal_transfers)}
-              </dd>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <dt className="text-xs text-muted-foreground">Uncategorised</dt>
-              <dd className="mt-1 text-base font-medium tabular-nums text-foreground">
-                {formatCurrency(facts.uncategorised_spend)}
-              </dd>
-            </div>
-          </dl>
-
-          <ul className="mt-4 space-y-2">
-            {observations.map((observation, index) => (
-              <li
-                key={`${observation.kind}-${index}`}
-                className={"text-sm leading-relaxed " + toneClass(observation.tone)}
-              >
-                {observation.text}
-              </li>
-            ))}
-          </ul>
-
-          {facts.top_expenses.length > 0 ? (
-            <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Largest expenses
-              </p>
-              <ul className="mt-2 space-y-1">
-                {facts.top_expenses.map((expense) => (
-                  <li
-                    key={`${expense.description}-${expense.occurred_at}`}
-                    className="flex items-baseline justify-between gap-3 text-sm"
-                  >
-                    <span className="truncate text-foreground">
-                      {expense.merchant_name ?? expense.description}
-                    </span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      {formatCurrency(expense.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <InsightsNarrative householdId={householdId} monthStart={monthStart} />
-        </>
-      )}
-    </section>
-  );
-}
-
-export function BudgetsWidget({
-  budgets,
-  error,
-}: {
-  budgets: BudgetProgressRow[];
-  error?: string;
-}) {
-  const overCount = budgets.filter((b) => b.netSpent > b.monthlyLimit).length;
-  const totalLimit = budgets.reduce((sum, b) => sum + b.monthlyLimit, 0);
-  const totalSpent = budgets.reduce((sum, b) => sum + b.netSpent, 0);
-
-  return (
-    <section>
-      <SectionHeading title="Budgets" href="/budgets" linkLabel="View all →" />
-
-      {error ? (
-        <p className="mt-3 text-sm text-muted-foreground">{error}</p>
-      ) : budgets.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No budgets yet —{" "}
-          <Link href="/budgets" className="underline underline-offset-4">
-            set one up
-          </Link>{" "}
-          to track spending.
-        </p>
-      ) : (
-        <>
-          <p className="mt-2 text-sm text-muted-foreground tabular-nums">
-            {formatCurrency(totalSpent)} of {formatCurrency(totalLimit)}
-            {overCount > 0 ? ` · ${overCount} over limit` : null}
-          </p>
-          <ul className="mt-3 space-y-3">
-            {budgets.slice(0, 3).map((budget) => (
-              <li key={budget.budgetId} className="space-y-1.5">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate text-foreground">{budget.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {formatCurrency(budget.netSpent)} / {formatCurrency(budget.monthlyLimit)}
-                  </span>
-                </div>
-                <ProgressBar
-                  percent={budget.percentUsed}
-                  isOver={budget.netSpent > budget.monthlyLimit}
-                />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
-  );
-}
-
-export function GoalsWidget({ goals }: { goals: Goal[] }) {
-  const activeGoals = goals.filter((g) => g.status === "active");
-  const completedCount = goals.filter((g) => g.status === "completed").length;
-  const shown = goals.filter((g) => g.status !== "archived");
-  const totalSaved = shown.reduce((sum, g) => sum + g.currentAmount, 0);
-  const totalTarget = shown.reduce((sum, g) => sum + g.targetAmount, 0);
-
-  return (
-    <section>
-      <SectionHeading title="Goals" href="/goals" linkLabel="View all →" />
-
-      {shown.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No goals yet —{" "}
-          <Link href="/goals" className="underline underline-offset-4">
-            start saving
-          </Link>{" "}
-          toward something.
-        </p>
-      ) : (
-        <>
-          <p className="mt-2 text-sm text-muted-foreground tabular-nums">
-            {formatCurrency(totalSaved)} of {formatCurrency(totalTarget)}
+      <p
+        className={
+          "mt-4 text-[0.8125rem] leading-relaxed " +
+          (synced?.isStale ? "text-warning" : "text-muted-foreground")
+        }
+      >
+        to spend
+        {synced ? ` · updated ${synced.text}` : " · never synced"}
+        {synced?.isStale ? (
+          <>
             {" · "}
-            {activeGoals.length} active
-            {completedCount > 0 ? ` · ${completedCount} completed` : null}
-          </p>
-          <ul className="mt-3 space-y-3">
-            {shown.slice(0, 3).map((goal) => (
-              <li key={goal.id} className="space-y-1.5">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate text-foreground">{goal.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
-                  </span>
-                </div>
-                <ProgressBar
-                  percent={goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0}
-                  isOver={false}
-                />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
-  );
-}
+            <Link href="/settings/banks" className="underline underline-offset-4">
+              sync
+            </Link>
+          </>
+        ) : null}
+      </p>
 
-export function RecentTransactionsWidget({
-  transactions,
-  error,
-}: {
-  transactions: TransactionRow[];
-  error?: string;
-}) {
-  return (
-    <section>
-      <SectionHeading title="Recent transactions" href="/transactions" linkLabel="View all →" />
-
-      {error ? (
-        <p className="mt-3 text-sm text-muted-foreground">{error}</p>
-      ) : transactions.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Nothing imported yet — try Sync now on{" "}
-          <Link href="/settings/banks" className="underline underline-offset-4">
-            your banks
-          </Link>
-          .
+      {balance.error ? (
+        <p className="mt-10 text-[1.0625rem] leading-relaxed text-destructive">{balance.error}</p>
+      ) : verdict ? (
+        <p
+          className={
+            "mt-10 text-[1.0625rem] leading-[1.5] tracking-[-0.005em] " +
+            (verdict.tone === "warning" ? "text-warning" : "text-foreground")
+          }
+        >
+          {verdict.headline}
         </p>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {transactions.map((transaction) => (
-            <li
-              key={transaction.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-foreground">
-                  {transaction.merchant_name ?? transaction.description}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {new Date(transaction.occurred_at).toLocaleDateString("en-NZ", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                  {" · "}
-                  {transaction.account_name}
-                </p>
-              </div>
-              <p className="shrink-0 font-medium tabular-nums text-foreground">
-                {transaction.direction === "debit" ? "−" : "+"}
-                {formatCurrency(Math.abs(transaction.amount))}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-10 text-[1.0625rem] leading-[1.5] tracking-[-0.005em] text-foreground">
+          Nothing needs your attention.
+        </p>
       )}
     </section>
   );
 }
 
-export function ConnectBankPrompt({ householdName }: { householdName: string }) {
+/* ── Awareness ──────────────────────────────────────────────────────────
+   The moment the app stops being a report. Three rows, not one: a single
+   row reads as a statistic, a short list reads as activity — and activity
+   is what makes a shared account feel shared. */
+
+export function Recent({ transactions }: { transactions: TransactionRow[] }) {
+  if (transactions.length === 0) return null;
+
   return (
     <section>
-      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {householdName}
+      <Label>Recent</Label>
+      <ul className="mt-6 space-y-6">
+        {transactions.map((transaction) => {
+          const when = relativeTime(transaction.occurred_at);
+          return (
+            <li key={transaction.id}>
+              <Link
+                href="/spending"
+                className="flex items-baseline justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[1.0625rem] leading-tight text-foreground">
+                    {transaction.merchant_name ?? cleanDescription(transaction.description)}
+                  </span>
+                  <span className="mt-1.5 block text-[0.75rem] leading-tight text-muted-foreground/70">
+                    {transaction.account_name} · {when.text}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[1.0625rem] tabular-nums tracking-[-0.01em] text-foreground">
+                  {transaction.direction === "debit" ? "−" : "+"}
+                  {money(Math.abs(transaction.amount))}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/* ── Hope ───────────────────────────────────────────────────────────────
+   The note the screen ends on. Framed forward: "$2,600 to go" is a finish
+   line, "48% complete" is a metric. Savings sits here rather than beside the
+   balance — as something built together, not an accounting footnote. */
+
+export function Together({ goals, savings }: { goals: Goal[]; savings: number }) {
+  const active = goals.filter((g) => g.status === "active");
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const justCompleted = goals
+    .filter(
+      (g) =>
+        g.status === "completed" &&
+        g.completedAt !== null &&
+        Date.now() - new Date(g.completedAt).getTime() < THIRTY_DAYS_MS,
+    )
+    .sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))[0];
+
+  const savingsLine =
+    savings > 0 ? (
+      <p className="mt-6 text-[0.75rem] text-muted-foreground/70">
+        {money(savings)} saved across your accounts
       </p>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-        Connect a bank to get started
+    ) : null;
+
+  if (justCompleted) {
+    return (
+      <section>
+        <Label>Together</Label>
+        <Link
+          href="/goals"
+          className="mt-6 block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <p className="text-[0.9375rem] text-success">{justCompleted.name} — reached</p>
+          <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">
+            {money(justCompleted.targetAmount)} saved
+            {active.length > 0
+              ? ` · ${active.length} more on the way`
+              : ""}
+          </p>
+        </Link>
+        {savingsLine}
+      </section>
+    );
+  }
+
+  if (active.length === 0) {
+    return (
+      <section>
+        <Label>Together</Label>
+        <Link
+          href="/goals"
+          className="mt-6 block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <p className="text-[0.9375rem] text-foreground">What are you saving for?</p>
+          <p className="mt-1.5 text-[0.8125rem] text-muted-foreground">
+            Name it, and watch it grow here.
+          </p>
+        </Link>
+        {savingsLine}
+      </section>
+    );
+  }
+
+  const lead = [...active].sort(
+    (a, b) =>
+      (b.targetAmount > 0 ? b.currentAmount / b.targetAmount : 0) -
+      (a.targetAmount > 0 ? a.currentAmount / a.targetAmount : 0),
+  )[0];
+  const percent = lead.targetAmount > 0 ? (lead.currentAmount / lead.targetAmount) * 100 : 0;
+  const remaining = Math.max(0, lead.targetAmount - lead.currentAmount);
+
+  return (
+    <section>
+      <Label>Together</Label>
+      <Link
+        href="/goals"
+        className="mt-6 block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <p className="text-[0.8125rem] text-muted-foreground">{lead.name}</p>
+        <p className="mt-1.5 text-[2rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground">
+          {remaining > 0 ? wholeMoney(remaining) : wholeMoney(lead.currentAmount)}
+        </p>
+        <p className="mt-1.5 text-[0.75rem] text-muted-foreground/70">
+          {remaining > 0 ? "to go" : "reached"}
+          {active.length > 1
+            ? ` · ${active.length - 1} other goal${active.length === 2 ? "" : "s"}`
+            : ""}
+        </p>
+        <div className="mt-6">
+          <ProgressFill percent={percent} />
+        </div>
+      </Link>
+      {savingsLine}
+    </section>
+  );
+}
+
+export function ConnectBankPrompt() {
+  return (
+    <section>
+      <p className="text-sm text-muted-foreground">{greeting()}</p>
+      <h1 className="mt-10 text-3xl font-semibold leading-tight tracking-tight text-foreground">
+        Let&apos;s see where you stand.
       </h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Once a bank is connected, your balances, spending, budgets and goals all show up here.
+      <p className="mt-4 text-[0.9375rem] leading-relaxed text-muted-foreground">
+        Connect a bank and you&apos;ll both see what&apos;s there to spend, what just went out,
+        and what you&apos;re saving towards.
       </p>
       <Link
         href="/settings/banks"
-        className="mt-6 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={"mt-10 inline-block " + primaryButtonClass}
       >
-        Connect your bank
+        Connect a bank
       </Link>
     </section>
   );

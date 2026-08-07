@@ -1,11 +1,24 @@
-import Link from "next/link";
-
+import { currentMonthStartNZ, loadMonthlySummary } from "@/lib/actions/dashboard";
+import { loadInsights } from "@/lib/actions/insights";
 import { loadTransactionPage } from "@/lib/actions/transactions";
 import { createClient } from "@/lib/supabase/server";
 
+import { Reveal } from "../reveal";
+import { Label } from "../ui";
+import { SpendingTabs } from "./spending-tabs";
+import { LargestThisMonth, SpendingSummary } from "./spending-summary";
 import { TransactionList } from "./transaction-list";
 
-export default async function TransactionsPage() {
+function formatMonthLabel(monthStart: string): string {
+  const [year, month] = monthStart.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-NZ", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export default async function SpendingPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,24 +39,57 @@ export default async function TransactionsPage() {
     return null;
   }
 
-  const initialPage = await loadTransactionPage(membership.household_id, null);
+  const householdId = membership.household_id;
+  const monthStart = await currentMonthStartNZ();
+
+  const [initialPage, monthly, insights] = await Promise.all([
+    loadTransactionPage(householdId, null),
+    loadMonthlySummary(householdId, monthStart),
+    loadInsights(householdId, monthStart),
+  ]);
 
   return (
-    <main className="mx-auto min-h-screen max-w-lg px-6 py-12">
-      <Link
-        href="/"
-        className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        ← Back to dashboard
-      </Link>
+    <main className="mx-auto max-w-[40rem] px-6 pb-16 pt-24">
+      {/*
+        No "Spending" heading: the tab bar already names this screen and the
+        segmented control names the view. A third label would be the
+        duplicated heading the language warns about.
 
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-        Transactions
-      </h1>
+        Rhythm matches Home exactly — 96 top, 64 between sections, 40
+        inside a group.
+      */}
+      <Reveal rise={false}>
+        <SpendingTabs />
+      </Reveal>
 
-      <section className="mt-8">
-        <TransactionList householdId={membership.household_id} initialPage={initialPage} />
-      </section>
+      <div className="mt-16">
+        <Reveal index={1} rise={false}>
+          <SpendingSummary
+            monthly={monthly}
+            monthLabel={formatMonthLabel(monthStart)}
+            insights={insights}
+            householdId={householdId}
+            monthStart={monthStart}
+          />
+        </Reveal>
+      </div>
+
+      <div className="mt-16">
+        <Reveal index={2}>
+          <LargestThisMonth insights={insights} />
+        </Reveal>
+      </div>
+
+      <div className="mt-16">
+        <Reveal index={3}>
+          <section>
+            <Label>Activity</Label>
+            <div className="mt-6">
+              <TransactionList householdId={householdId} initialPage={initialPage} />
+            </div>
+          </section>
+        </Reveal>
+      </div>
     </main>
   );
 }

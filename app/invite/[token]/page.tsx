@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
+import { primaryButtonClass } from "@/app/(app)/ui";
 
 import { AcceptForm } from "./accept-form";
 
@@ -28,7 +29,7 @@ export default async function InvitePage({
   if (!preview) {
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-foreground">Invite not found</h1>
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">Invite not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           This invite link doesn&apos;t exist. Ask your partner to send a new one.
         </p>
@@ -42,7 +43,7 @@ export default async function InvitePage({
   if (preview.status === "accepted") {
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-foreground">Already used</h1>
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">Already used</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           This invite has already been accepted.
         </p>
@@ -59,7 +60,7 @@ export default async function InvitePage({
   if (isExpired) {
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-foreground">Invite expired</h1>
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">Invite expired</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           This invite has expired. Ask your partner to send a new one.
         </p>
@@ -78,7 +79,7 @@ export default async function InvitePage({
 
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-foreground">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
           You&apos;ve been invited to join {preview.household_name}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -86,7 +87,7 @@ export default async function InvitePage({
         </p>
         <Link
           href={loginUrl}
-          className="mt-6 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={"mt-10 inline-block " + primaryButtonClass}
         >
           Sign in to accept
         </Link>
@@ -96,7 +97,7 @@ export default async function InvitePage({
 
   return (
     <Shell>
-      <h1 className="text-xl font-semibold text-foreground">
+      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
         Join {preview.household_name}?
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
