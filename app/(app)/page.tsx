@@ -4,11 +4,13 @@ import { loadInsights } from "@/lib/actions/insights";
 import { loadRecentTransactions } from "@/lib/actions/transactions";
 import { createClient } from "@/lib/supabase/server";
 
-import { ConnectBankPrompt, Recent, Standing, Together } from "./dashboard-widgets";
+import { Building, ConnectBankPrompt, Standing } from "./dashboard-widgets";
 import { Reveal } from "./reveal";
+import { pageClass } from "./ui";
 
-// Three, not five: one row reads as a statistic, a short list reads as
-// activity. Activity is what makes a shared account feel shared.
+// Three loaded, split one/two across the beats: the first answers "what
+// just happened?" in the opening glance, the other two carry the activity
+// thread into the second beat.
 const RECENT_COUNT = 3;
 
 export default async function HomePage() {
@@ -47,40 +49,38 @@ export default async function HomePage() {
 
   if (!balance.hasAnyConnection && !balance.error) {
     return (
-      <main className="mx-auto max-w-[40rem] px-6 pb-16 pt-24">
-        <Reveal rise={false}>
-          <ConnectBankPrompt />
-        </Reveal>
+      <main className={pageClass}>
+        <ConnectBankPrompt />
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-[40rem] px-6 pb-16 pt-24">
+    <main className={pageClass}>
       {/*
-        Confidence → Awareness → Hope. Separated by whitespace alone: no
-        cards, no borders, no dividers. The gaps are large enough that each
-        beat is read on its own before the next is noticed.
+        Two beats, not three sections. Beat one is composed to the height of
+        the screen rather than to the height of its own content, so the
+        figure, the verdict and the day's one event occupy the frame in
+        fixed relation to each other on every phone.
 
-        The hero does not animate in — it is the anchor. Only the beats
-        below rise, which leads the eye downward through the story.
+        It renders unwrapped and unanimated. A number someone opens the app
+        specifically to read should be there before they finish looking —
+        the composure of the screen is the animation.
       */}
-      <Reveal rise={false}>
-        <Standing
-          balance={balance}
-          observations={insights.observations}
-        />
-      </Reveal>
+      <Standing
+        balance={balance}
+        observations={insights.observations}
+        latest={recent.transactions[0]}
+      />
 
-      <div className="mt-16">
+      {/* Beat two sits a deliberate scroll away, and rises when reached. */}
+      <div className="mt-20">
         <Reveal index={1}>
-          <Recent transactions={recent.transactions} />
-        </Reveal>
-      </div>
-
-      <div className="mt-16">
-        <Reveal index={2}>
-          <Together goals={goals} savings={balance.savingsBalance} />
+          <Building
+            goals={goals}
+            savings={balance.savingsBalance}
+            rest={recent.transactions.slice(1)}
+          />
         </Reveal>
       </div>
     </main>

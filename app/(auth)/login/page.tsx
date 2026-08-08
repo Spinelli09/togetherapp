@@ -102,6 +102,14 @@ export default function LoginPage() {
             {isPending ? "Sending…" : "Send magic link"}
           </button>
 
+          {/* The most consequential acknowledgement in the product: this is
+              how you learn the link is on its way. It used to appear with a
+              hard pop that shoved the layout.
+              
+              CSS rather than the shared <Settle>: this is the only screen in
+              the app that loads no motion library at all, and pulling framer
+              in for one fade cost 29 kB of first-load JS on the cold-cache
+              screen of a signed-out user. Same 4px rise, same ~180ms. */}
           {displayMessage ? (
             <p
               id="auth-message"
@@ -110,9 +118,10 @@ export default function LoginPage() {
               role="status"
               aria-live="polite"
               className={
-                displayIsError
+                "animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none " +
+                (displayIsError
                   ? "text-[0.8125rem] text-destructive"
-                  : "text-[0.8125rem] text-muted-foreground"
+                  : "text-[0.8125rem] text-muted-foreground")
               }
             >
               {displayMessage}

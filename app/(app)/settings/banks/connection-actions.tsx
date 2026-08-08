@@ -7,6 +7,7 @@ import {
   syncBankConnection,
   type BankActionState,
 } from "@/lib/actions/bank";
+import { Settle } from "../../reveal";
 
 const initialState: BankActionState = { status: "idle" };
 
@@ -20,6 +21,12 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
     initialState,
   );
   const messageRef = useRef<HTMLParagraphElement>(null);
+  // A successful sync used to say nothing at all: the button label reverted
+  // and the data changed underneath. Sync is the action people distrust most
+  // — it is the one they take *because* they suspect the numbers are stale —
+  // so silence is the worst possible answer. It retires on its own; the
+  // updated "last synced" line beside it is the permanent record.
+  const [synced, setSynced] = useState(false);
   // Two-step confirm: disconnecting deletes the stored Akahu token from
   // Vault, so recovering means generating and pasting a new one from
   // my.akahu.nz. Cheap to guard, annoying to undo.
@@ -32,6 +39,13 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
       messageRef.current?.focus();
     }
   }, [activeState]);
+
+  useEffect(() => {
+    if (syncState.status !== "success") return;
+    setSynced(true);
+    const timer = setTimeout(() => setSynced(false), 4000);
+    return () => clearTimeout(timer);
+  }, [syncState]);
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -81,15 +95,23 @@ export function ConnectionActions({ connectionId }: { connectionId: string }) {
       </div>
 
       {activeState.status === "error" ? (
-        <p
-          ref={messageRef}
-          tabIndex={-1}
-          role="status"
-          aria-live="polite"
-          className="text-sm text-destructive"
-        >
-          {activeState.message}
-        </p>
+        <Settle>
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            role="status"
+            aria-live="polite"
+            className="text-sm text-destructive"
+          >
+            {activeState.message}
+          </p>
+        </Settle>
+      ) : synced ? (
+        <Settle>
+          <p role="status" aria-live="polite" className="text-sm text-success">
+            Up to date.
+          </p>
+        </Settle>
       ) : null}
     </div>
   );

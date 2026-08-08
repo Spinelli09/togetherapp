@@ -51,6 +51,58 @@ export function messageClass(isError: boolean) {
   return "text-[0.8125rem] " + (isError ? "text-destructive" : "text-success");
 }
 
+/* ── Money ────────────────────────────────────────────────────────────
+   The currency symbol set at half size and raised to the cap line. It is
+   standard practice in financial typography and almost never done on the
+   web: it makes "4,745" the word and "$" the accent, so the figure reads
+   as typeset rather than printed.
+
+   formatToParts rather than string surgery, so this stays correct if the
+   locale or currency ever changes. */
+export function formatAmountParts(value: number, cents = false) {
+  const parts = new Intl.NumberFormat("en-NZ", {
+    style: "currency",
+    currency: "NZD",
+    maximumFractionDigits: cents ? 2 : 0,
+    minimumFractionDigits: cents ? 2 : 0,
+  }).formatToParts(value);
+
+  return {
+    symbol: parts.find((p) => p.type === "currency")?.value ?? "$",
+    digits: parts
+      .filter((p) => p.type !== "currency")
+      .map((p) => p.value)
+      .join(""),
+  };
+}
+
+// The raised symbol is its own element so the client-side AnimatedAmount can
+// rewrite only the digits while this stays untouched.
+export function AmountSymbol({ symbol }: { symbol: string }) {
+  return (
+    <span className="mr-[0.06em] align-[0.42em] text-[0.5em] tracking-normal">{symbol}</span>
+  );
+}
+
+export function Amount({
+  value,
+  className = "",
+  cents = false,
+}: {
+  value: number;
+  className?: string;
+  cents?: boolean;
+}) {
+  const { symbol, digits } = formatAmountParts(value, cents);
+
+  return (
+    <span className={"tabular-nums " + className}>
+      <AmountSymbol symbol={symbol} />
+      {digits}
+    </span>
+  );
+}
+
 /* ── Text ─────────────────────────────────────────────────────────────
    Bank descriptions arrive with the card number and FX small print glued
    on: "Silverdale C Card number: 4835 **** **** 6286". 58% of this

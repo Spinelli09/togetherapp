@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { connectBankAccount, type ConnectBankState } from "@/lib/actions/bank";
+import { Settle } from "../../reveal";
 import { fieldClass, fieldLabelClass, primaryButtonClass } from "../../ui";
 
 const initialState: ConnectBankState = { status: "idle" };
@@ -64,19 +65,21 @@ export function ConnectBankForm({ householdId }: { householdId: string }) {
       </button>
 
       {state.message ? (
-        <p
-          ref={messageRef}
-          tabIndex={-1}
-          role="status"
-          aria-live="polite"
-          className={
-            state.status === "error"
-              ? "text-sm text-destructive"
-              : "text-sm text-muted-foreground"
-          }
-        >
-          {state.message}
-        </p>
+        <Settle>
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            role="status"
+            aria-live="polite"
+            className={
+              state.status === "error"
+                ? "text-sm text-destructive"
+                : "text-sm text-muted-foreground"
+            }
+          >
+            {state.message}
+          </p>
+        </Settle>
       ) : null}
     </form>
   );

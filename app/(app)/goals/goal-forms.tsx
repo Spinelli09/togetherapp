@@ -10,6 +10,7 @@ import {
   type Goal,
   type GoalFormState,
 } from "@/lib/actions/goals";
+import { Settle } from "../reveal";
 import {
   fieldClass,
   fieldLabelClass,
@@ -18,6 +19,10 @@ import {
   primaryButtonSmallClass,
   quietLinkClass,
 } from "../ui";
+
+function money(amount: number) {
+  return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(amount);
+}
 
 // The only client code on Goals. Each form is rendered by the server *only
 // when it is needed* — the page decides via search params — so the common
@@ -33,11 +38,27 @@ export function ContributeForm({ goalId }: { goalId: string }) {
     initialFormState,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  // Captured before the reset wipes it, so the confirmation can name the
+  // amount. "Added $100" is an acknowledgement; "Saved." is a receipt.
+  const submitted = useRef<number | null>(null);
+  const [confirmed, setConfirmed] = useState<string | null>(null);
 
   useEffect(() => {
-    if (state.status === "success") {
-      formRef.current?.reset();
-    }
+    if (state.status !== "success") return;
+    formRef.current?.reset();
+
+    const amount = submitted.current;
+    setConfirmed(
+      amount === null
+        ? "Added."
+        : `${amount < 0 ? "Took out" : "Added"} ${money(Math.abs(amount))}.`,
+    );
+
+    // Retires itself. The real acknowledgement is the figure above counting
+    // up and the bar advancing — this line only has to catch the eye that
+    // was on the button, and a confirmation you must dismiss is a chore.
+    const timer = setTimeout(() => setConfirmed(null), 4000);
+    return () => clearTimeout(timer);
   }, [state]);
 
   return (
@@ -53,19 +74,37 @@ export function ContributeForm({ goalId }: { goalId: string }) {
           aria-label="Amount to add"
           placeholder="Add an amount"
           className={fieldClass}
+          onChange={(e) => {
+            submitted.current = e.target.valueAsNumber;
+            if (confirmed) setConfirmed(null);
+          }}
         />
+        {/* The label does not change. Swapping "Add" for "Adding…" re-widths
+            the pill and shoves the field it sits beside — layout shift under
+            the user's own finger, to say something the dimmed disabled state
+            already says. */}
         <button
           type="submit"
           disabled={isPending}
+          aria-busy={isPending}
           className={"shrink-0 " + primaryButtonSmallClass}
         >
-          {isPending ? "Adding…" : "Add"}
+          Add
         </button>
       </div>
+
       {state.status === "error" ? (
-        <p role="status" aria-live="polite" className="mt-4 text-[0.8125rem] text-destructive">
-          {state.message}
-        </p>
+        <Settle>
+          <p role="status" aria-live="polite" className="mt-4 text-[0.8125rem] text-destructive">
+            {state.message}
+          </p>
+        </Settle>
+      ) : confirmed ? (
+        <Settle>
+          <p role="status" aria-live="polite" className="mt-4 text-[0.8125rem] text-success">
+            {confirmed}
+          </p>
+        </Settle>
       ) : null}
     </form>
   );
@@ -144,15 +183,17 @@ export function GoalFields({
       </button>
 
       {state.message ? (
-        <p
-          ref={messageRef}
-          tabIndex={-1}
-          role="status"
-          aria-live="polite"
-          className={messageClass(state.status === "error")}
-        >
-          {state.message}
-        </p>
+        <Settle>
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            role="status"
+            aria-live="polite"
+            className={messageClass(state.status === "error")}
+          >
+            {state.message}
+          </p>
+        </Settle>
       ) : null}
     </form>
   );

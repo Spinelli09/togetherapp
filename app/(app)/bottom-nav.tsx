@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CreditCard, House, Settings, Target } from "lucide-react";
@@ -23,6 +24,34 @@ function isActive(pathname: string, href: string) {
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Every screen here is server-rendered, so a tab press is a network round
+  // trip. Without this the nav is dead from the moment your finger lifts
+  // until the response lands — the most repeated interaction in the product,
+  // and the only one with no acknowledgement at all.
+  //
+  // The feedback is not a spinner. The pressed tab takes the active
+  // treatment immediately and the current one gives it up, so the answer to
+  // "did that register?" is the nav behaving as though you have arrived. A
+  // spinner says "wait"; this says "yes."
+  //
+  // Selection is tracked here rather than per-link (useLinkStatus) because
+  // that hook only knows about its own link: mid-navigation both the old and
+  // new tab would be lit, which reads as a rendering fault. Exactly one tab
+  // is ever lit.
+  const [pressed, setPressed] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPressed(null);
+  }, [pathname]);
+
+  // If a navigation is abandoned or fails, the pressed tab must not stay lit
+  // pointing at a screen you are not on.
+  useEffect(() => {
+    if (pressed === null) return;
+    const timer = setTimeout(() => setPressed(null), 5000);
+    return () => clearTimeout(timer);
+  }, [pressed]);
+
   // Full-bleed on a phone, which is correct there. On anything wider it
   // becomes a centred pill floating clear of the bottom edge — a full-width
   // bar beneath a 40rem column reads as a mobile app stretched to fit
@@ -36,24 +65,27 @@ export function BottomNav() {
       <ul className="mx-auto flex max-w-lg pb-[env(safe-area-inset-bottom)] sm:max-w-none sm:pb-0">
         {TABS.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
+          const lit = pressed === null ? active : pressed === href;
           return (
             <li key={href} className="flex-1 sm:flex-none">
               <Link
                 href={href}
+                // aria-current follows the real route, never the optimistic
+                // one: assistive tech should not be told you have arrived
+                // somewhere you have not.
                 aria-current={active ? "page" : undefined}
+                onClick={(event) => {
+                  // Modified clicks open elsewhere; this tab is not going anywhere.
+                  if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+                  setPressed(href);
+                }}
                 className={
                   // min-h-14 keeps every tap target above the 44px guideline.
-                  "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[0.6875rem] font-medium transition-colors active:opacity-70 sm:min-h-0 sm:min-w-[4.5rem] sm:rounded-full sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring " +
-                  (active
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground")
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[0.6875rem] font-medium transition-colors duration-150 active:opacity-70 sm:min-h-0 sm:min-w-[4.5rem] sm:rounded-full sm:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring " +
+                  (lit ? "text-foreground" : "text-muted-foreground hover:text-foreground")
                 }
               >
-                <Icon
-                  aria-hidden="true"
-                  className="size-6"
-                  strokeWidth={active ? 2.25 : 1.75}
-                />
+                <Icon aria-hidden="true" className="size-6" strokeWidth={lit ? 2.25 : 1.75} />
                 {label}
               </Link>
             </li>

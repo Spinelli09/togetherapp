@@ -7,6 +7,7 @@ import {
   type TransactionPage,
   type TransactionRow,
 } from "@/lib/actions/transactions";
+import { Arrival, Settle } from "../reveal";
 import { cleanDescription, quietLinkClass } from "../ui";
 
 function money(amount: number) {
@@ -34,9 +35,13 @@ function when(value: string): string {
 // Matches Home's Recent rows exactly: merchant dominant, amount scannable
 // at the same size, metadata a genuine whisper. Borderless — the old rows
 // were individually boxed, which is what made the ledger read as a table.
+// The <li> lives at the call site so an arriving row can be an animated one
+// without nesting two list items.
+const rowClass = "flex items-baseline justify-between gap-4";
+
 function Row({ transaction }: { transaction: TransactionRow }) {
   return (
-    <li className="flex items-baseline justify-between gap-4">
+    <>
       <span className="min-w-0">
         <span className="block truncate text-[1.0625rem] leading-tight text-foreground">
           {transaction.merchant_name ?? cleanDescription(transaction.description)}
@@ -50,7 +55,7 @@ function Row({ transaction }: { transaction: TransactionRow }) {
         {transaction.direction === "debit" ? "−" : "+"}
         {money(transaction.amount)}
       </span>
-    </li>
+    </>
   );
 }
 
@@ -65,13 +70,20 @@ export function TransactionList({
   const [cursor, setCursor] = useState(initialPage.nextCursor);
   const [error, setError] = useState<string | null>(initialPage.error ?? null);
   const [isPending, startTransition] = useTransition();
+  // Where the ledger grew last time. Rows before this index are already on
+  // screen and must not move or re-animate — appending is not a re-entrance
+  // for the rows you were already reading.
+  const [appendedFrom, setAppendedFrom] = useState<number | null>(null);
 
   function handleLoadMore() {
     if (!cursor) return;
     setError(null);
     startTransition(async () => {
       const page = await loadTransactionPage(householdId, cursor);
-      setTransactions((current) => [...current, ...page.transactions]);
+      setTransactions((current) => {
+        setAppendedFrom(current.length);
+        return [...current, ...page.transactions];
+      });
       setCursor(page.nextCursor);
       setError(page.error ?? null);
     });
@@ -88,25 +100,52 @@ export function TransactionList({
   return (
     <div>
       <ul className="space-y-6">
-        {transactions.map((transaction) => (
-          <Row key={transaction.id} transaction={transaction} />
-        ))}
+        {transactions.map((transaction, index) => {
+          // Arriving rows fade in where they landed, so the eye can find the
+          // seam without the page scrolling or anything above it moving.
+          // Staggered by position, capped at six, so a twenty-row page reads
+          // as one arrival rather than twenty separate events.
+          const arriving = appendedFrom !== null && index >= appendedFrom;
+          return arriving ? (
+            <Arrival
+              key={transaction.id}
+              index={Math.min(index - appendedFrom, 6)}
+              className={rowClass}
+            >
+              <Row transaction={transaction} />
+            </Arrival>
+          ) : (
+            <li key={transaction.id} className={rowClass}>
+              <Row transaction={transaction} />
+            </li>
+          );
+        })}
       </ul>
 
       {cursor ? (
         <div className="mt-10">
+          {/* The label stays put. "Loading…" is narrower than "Show more",
+              so swapping it made the control shrink away from the finger
+              that was still on it. */}
           <button
             type="button"
             onClick={handleLoadMore}
             disabled={isPending}
+            aria-busy={isPending}
             className={quietLinkClass}
           >
-            {isPending ? "Loading…" : "Show more"}
+            Show more
           </button>
           {error ? (
-            <p role="status" aria-live="polite" className="mt-4 text-[0.8125rem] text-destructive">
-              {error}
-            </p>
+            <Settle>
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-4 text-[0.8125rem] text-destructive"
+              >
+                {error}
+              </p>
+            </Settle>
           ) : null}
         </div>
       ) : (

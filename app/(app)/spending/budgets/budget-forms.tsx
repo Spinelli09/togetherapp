@@ -10,6 +10,7 @@ import {
   type BudgetFormState,
   type CategoryOption,
 } from "@/lib/actions/budgets";
+import { Settle } from "../../reveal";
 import {
   fieldClass,
   fieldLabelClass,
@@ -146,15 +147,17 @@ export function BudgetFields({
       </button>
 
       {state.message ? (
-        <p
-          ref={messageRef}
-          tabIndex={-1}
-          role="status"
-          aria-live="polite"
-          className={messageClass(state.status === "error")}
-        >
-          {state.message}
-        </p>
+        <Settle>
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            role="status"
+            aria-live="polite"
+            className={messageClass(state.status === "error")}
+          >
+            {state.message}
+          </p>
+        </Settle>
       ) : null}
     </form>
   );

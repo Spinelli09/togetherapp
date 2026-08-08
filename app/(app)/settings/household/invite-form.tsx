@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 
 import { invitePartner, type InviteState } from "@/lib/actions/invites";
+import { Settle } from "../../reveal";
 import { fieldClass, fieldLabelClass, primaryButtonClass } from "../../ui";
 
 const initialState: InviteState = { status: "idle" };
@@ -49,19 +50,21 @@ export function InviteForm({ householdId }: { householdId: string }) {
       </div>
 
       {state.message ? (
-        <p
-          ref={messageRef}
-          tabIndex={-1}
-          role="status"
-          aria-live="polite"
-          className={
-            state.status === "error"
-              ? "text-sm text-destructive"
-              : "text-sm text-muted-foreground"
-          }
-        >
-          {state.message}
-        </p>
+        <Settle>
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            role="status"
+            aria-live="polite"
+            className={
+              state.status === "error"
+                ? "text-sm text-destructive"
+                : "text-sm text-muted-foreground"
+            }
+          >
+            {state.message}
+          </p>
+        </Settle>
       ) : null}
     </form>
   );

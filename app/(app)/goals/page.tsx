@@ -3,6 +3,7 @@ import Link from "next/link";
 import { loadHouseholdGoals, type Goal } from "@/lib/actions/goals";
 import { createClient } from "@/lib/supabase/server";
 
+import { AnimatedAmount } from "../animated-amount";
 import { Reveal, ProgressFill } from "../reveal";
 import { Label, quietLinkClass} from "../ui";
 import { ContributeForm, GoalFields, RemoveGoalButton } from "./goal-forms";
@@ -16,14 +17,6 @@ import { ContributeForm, GoalFields, RemoveGoalButton } from "./goal-forms";
 
 function money(amount: number) {
   return new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format(amount);
-}
-
-function wholeMoney(amount: number) {
-  return new Intl.NumberFormat("en-NZ", {
-    style: "currency",
-    currency: "NZD",
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function percentOf(goal: Goal) {
@@ -156,10 +149,17 @@ export default async function GoalsPage({
 
           {/* The anchor: the same shape as Home's balance, so the two screens
               read as one product. A remainder, not a percentage — a finish
-              line rather than a metric. */}
-          <p className="mt-1 text-[3.5rem] font-semibold leading-[0.95] tracking-tighter tabular-nums text-foreground">
-            {isReached ? wholeMoney(anchor.currentAmount) : wholeMoney(remaining)}
-          </p>
+              line rather than a metric.
+
+              It counts, but only when a contribution changes it. On first
+              paint it is simply the number. Watching your goal close the
+              distance is the payoff for the one action this screen exists
+              for; watching it count up every time you open the screen would
+              be a stunt. */}
+          <AnimatedAmount
+            value={isReached ? anchor.currentAmount : remaining}
+            className="mt-1 block text-[3.5rem] font-semibold leading-[0.95] tracking-tighter text-foreground"
+          />
 
           <p className={"mt-3 text-sm " + (isReached ? "text-success" : "text-muted-foreground")}>
             {isReached
