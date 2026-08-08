@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
-import { primaryButtonClass } from "@/app/(app)/ui";
+import { primaryButtonClass, quietLinkClass } from "@/app/(app)/ui";
 
-import { AcceptForm } from "./accept-form";
+import { SetPasswordForm } from "./accept-form";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -72,38 +72,70 @@ export default async function InvitePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isCorrectUser = user?.email?.toLowerCase() === preview.invited_email.toLowerCase();
+  const loginUrl = `/login?next=${encodeURIComponent(`/invite/${token}`)}&email=${encodeURIComponent(preview.invited_email)}`;
 
-  if (!user || !isCorrectUser) {
-    const loginUrl = `/login?next=${encodeURIComponent(`/invite/${token}`)}&email=${encodeURIComponent(preview.invited_email)}`;
-
+  // Signed in as somebody else. Not a set-a-password moment — they have an
+  // account, it is just the wrong one for this invite.
+  if (user && user.email?.toLowerCase() !== preview.invited_email.toLowerCase()) {
     return (
       <Shell>
         <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
           You&apos;ve been invited to join {preview.household_name}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in as {preview.invited_email} to accept.
+          This invite is for {preview.invited_email}, but you&apos;re signed in as{" "}
+          {user.email}. Sign in with the invited address to accept.
         </p>
-        <Link
-          href={loginUrl}
-          className={"mt-10 inline-block " + primaryButtonClass}
-        >
+        <Link href={loginUrl} className={"mt-10 inline-block " + primaryButtonClass}>
           Sign in to accept
         </Link>
       </Shell>
     );
   }
 
+  // Signed in as the invited address — the normal outcome of clicking the
+  // emailed invite link, which /auth/callback exchanges for a session
+  // before redirecting here. Choosing a password both proves nothing more
+  // (the emailed link already did that) and finishes the join.
+  if (user) {
+    return (
+      <Shell>
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
+          Join {preview.household_name}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Choose a password and you&apos;re in. You&apos;ll stay signed in on this device.
+        </p>
+        <SetPasswordForm
+          token={token}
+          email={preview.invited_email}
+          householdName={preview.household_name}
+        />
+      </Shell>
+    );
+  }
+
+  // No session — the invite email hasn't been clicked yet (or the click
+  // hasn't happened on this device/browser). This is not an anonymous
+  // sign-up screen: there is no way to prove this visitor owns
+  // preview.invited_email except the emailed link itself, so that is what
+  // this sends them to do. "Sign in" is only a fallback, for someone who
+  // already finished this once before and is revisiting a stale link.
   return (
     <Shell>
       <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground">
-        Join {preview.household_name}?
+        You&apos;ve been invited to join {preview.household_name}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        You&apos;ll be added as a member alongside the household&apos;s owner.
+        Check {preview.invited_email} for the invite email, and open the link there to
+        continue.
       </p>
-      <AcceptForm token={token} householdName={preview.household_name} />
+      <p className="mt-8 text-sm text-muted-foreground">
+        Already chosen a password?{" "}
+        <Link href={loginUrl} className={quietLinkClass}>
+          Sign in
+        </Link>
+      </p>
     </Shell>
   );
 }

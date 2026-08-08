@@ -3,7 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "./types";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/invite"];
+// Reachable without a session. /reset-password is deliberately *not* here:
+// /auth/callback establishes a session from the recovery token_hash before
+// redirecting to it, so it is a normal authenticated screen and leaving it
+// public would let anyone open a password form.
+const PUBLIC_PATHS = [
+  "/login",
+  "/forgot-password",
+  "/auth/callback",
+  "/invite",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some(

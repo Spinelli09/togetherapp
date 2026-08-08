@@ -66,11 +66,21 @@ const handler = {
     const household = invite.households as { name: string } | null;
     const householdName = household?.name ?? "your household";
 
+    // The email template links straight to /auth/callback with token_hash +
+    // type — see supabase/templates/invite.html for why — so the *only*
+    // thing redirectTo needs to do here is satisfy GoTrue's allow-list
+    // check; the template doesn't reference {{ .RedirectTo }}. Routing to
+    // the right invite after verification instead goes through
+    // `invite_path` in `data`, which the template does read
+    // ({{ .Data.invite_path }}) — a plain relative path, not a full URL, so
+    // it can be dropped straight into the template's own query string
+    // without colliding with its `token_hash`/`type` params the way a
+    // second full URL nested inside one query value would.
     const { error: sendError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       invite.email,
       {
         redirectTo: payload.redirectTo,
-        data: { household_name: householdName },
+        data: { household_name: householdName, invite_path: `/invite/${payload.token}` },
       },
     );
 
